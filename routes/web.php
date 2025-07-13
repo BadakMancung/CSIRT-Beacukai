@@ -4,6 +4,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PublicController;
 use App\Http\Controllers\ArticleController;
 use App\Http\Controllers\EventController;
+use App\Http\Controllers\ContactController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -17,6 +18,9 @@ Route::get('/event/{id}', [PublicController::class, 'eventShow'])->name('public.
 Route::get('/hubungi-kami', [PublicController::class, 'contact'])->name('contact');
 Route::get('/artikel', [PublicController::class, 'articles'])->name('public.articles');
 Route::get('/artikel/{id}', [PublicController::class, 'articleShow'])->name('public.articles.show');
+
+// Contact Form Route
+Route::post('/contact', [ContactController::class, 'store'])->name('contact.store');
 
 // RFC2350 page - static content for now
 Route::get('/rfc2350', function () {

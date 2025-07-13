@@ -12,12 +12,11 @@ class PublicController extends Controller
     public function home()
     {
         $articles = Article::published()
-            ->latest('published_at')
-            ->take(6)
-            ->get();
+            ->sortByDesc('published_at')
+            ->take(6);
 
         return Inertia::render('Public/Home', [
-            'articles' => $articles
+            'articles' => $articles->values()->all()
         ]);
     }
 
@@ -33,20 +32,22 @@ class PublicController extends Controller
 
     public function events()
     {
-        $upcomingEvents = Event::published()
-            ->upcoming()
-            ->latest('event_date')
-            ->get();
+        $upcomingEvents = Event::upcoming()
+            ->filter(function($event) {
+                return $event['is_published'] === true;
+            })
+            ->sortByDesc('event_date');
 
-        $pastEvents = Event::published()
-            ->past()
-            ->latest('event_date')
-            ->take(10)
-            ->get();
+        $pastEvents = Event::past()
+            ->filter(function($event) {
+                return $event['is_published'] === true;
+            })
+            ->sortByDesc('event_date')
+            ->take(10);
 
         return Inertia::render('Public/Events', [
-            'upcomingEvents' => $upcomingEvents,
-            'pastEvents' => $pastEvents
+            'upcomingEvents' => $upcomingEvents->values()->all(),
+            'pastEvents' => $pastEvents->values()->all()
         ]);
     }
 
@@ -58,33 +59,57 @@ class PublicController extends Controller
     public function articles()
     {
         $articles = Article::published()
-            ->latest('published_at')
-            ->paginate(9);
+            ->sortByDesc('published_at');
+
+        // Simulate pagination manually since we're using Collection
+        $perPage = 9;
+        $currentPage = request()->get('page', 1);
+        $offset = ($currentPage - 1) * $perPage;
+        
+        $items = $articles->slice($offset, $perPage)->values();
+        $total = $articles->count();
+        
+        $paginatedData = [
+            'data' => $items->all(),
+            'current_page' => $currentPage,
+            'last_page' => ceil($total / $perPage),
+            'per_page' => $perPage,
+            'total' => $total
+        ];
 
         return Inertia::render('Public/Articles', [
-            'articles' => $articles
+            'articles' => $paginatedData
         ]);
     }
 
     public function articleShow($id)
     {
-        $article = Article::published()->findOrFail($id);
+        $article = Article::find($id);
+        
+        if (!$article || !$article['is_published']) {
+            abort(404);
+        }
         
         $relatedArticles = Article::published()
-            ->where('id', '!=', $id)
-            ->latest('published_at')
-            ->take(3)
-            ->get();
+            ->reject(function($item) use ($id) {
+                return $item['id'] == $id;
+            })
+            ->sortByDesc('published_at')
+            ->take(3);
 
         return Inertia::render('Public/ArticleShow', [
             'article' => $article,
-            'relatedArticles' => $relatedArticles
+            'relatedArticles' => $relatedArticles->values()->all()
         ]);
     }
 
     public function eventShow($id)
     {
-        $event = Event::published()->findOrFail($id);
+        $event = Event::find($id);
+        
+        if (!$event || !$event['is_published']) {
+            abort(404);
+        }
 
         return Inertia::render('Public/EventShow', [
             'event' => $event

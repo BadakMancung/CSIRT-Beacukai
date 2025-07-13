@@ -56,11 +56,11 @@ export default function Show({ article }) {
                                     <h1 className="text-3xl font-bold text-gray-900">{article.title}</h1>
                                     <div className="mt-2 flex items-center space-x-4 text-sm text-gray-500">
                                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                                            article.status === 'published' 
+                                            article.is_published 
                                                 ? 'bg-green-100 text-green-800' 
                                                 : 'bg-yellow-100 text-yellow-800'
                                         }`}>
-                                            {article.status}
+                                            {article.is_published ? 'Published' : 'Draft'}
                                         </span>
                                         <span>Created: {formatDate(article.created_at)}</span>
                                         <span>Updated: {formatDate(article.updated_at)}</span>
@@ -70,11 +70,11 @@ export default function Show({ article }) {
                                     </div>
                                 </div>
 
-                                {article.featured_image && (
+                                {(article.image || article.image_url) && (
                                     <div>
                                         <h3 className="text-lg font-medium text-gray-900 mb-3">Featured Image</h3>
                                         <img 
-                                            src={`/storage/${article.featured_image}`} 
+                                            src={article.image_url || `/storage/${article.image}`} 
                                             alt={article.title}
                                             className="max-w-md h-auto object-cover rounded-md shadow-sm"
                                         />
@@ -111,14 +111,18 @@ export default function Show({ article }) {
                                             <dd className="mt-1 text-sm text-gray-900">{article.id}</dd>
                                         </div>
                                         <div>
+                                            <dt className="text-sm font-medium text-gray-500">Author</dt>
+                                            <dd className="mt-1 text-sm text-gray-900">{article.author || 'Unknown'}</dd>
+                                        </div>
+                                        <div>
                                             <dt className="text-sm font-medium text-gray-500">Status</dt>
                                             <dd className="mt-1">
                                                 <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                                                    article.status === 'published' 
+                                                    article.is_published 
                                                         ? 'bg-green-100 text-green-800' 
                                                         : 'bg-yellow-100 text-yellow-800'
                                                 }`}>
-                                                    {article.status}
+                                                    {article.is_published ? 'Published' : 'Draft'}
                                                 </span>
                                             </dd>
                                         </div>
@@ -137,7 +141,7 @@ export default function Show({ article }) {
                                         <div>
                                             <dt className="text-sm font-medium text-gray-500">Featured Image</dt>
                                             <dd className="mt-1 text-sm text-gray-900">
-                                                {article.featured_image ? 'Yes' : 'No'}
+                                                {(article.image || article.image_url) ? 'Yes' : 'No'}
                                             </dd>
                                         </div>
                                     </dl>

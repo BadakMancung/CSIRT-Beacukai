@@ -13,29 +13,33 @@ export default function Edit({ article }) {
         title: article.title || '',
         content: article.content || '',
         excerpt: article.excerpt || '',
-        featured_image: null,
-        status: article.status || 'draft',
+        image: null,
+        author: article.author || '',
+        is_published: Boolean(article.is_published),
         published_at: formatDateTimeLocal(article.published_at),
     });
 
     const submit = (e) => {
         e.preventDefault();
         
-        const formData = new FormData();
-        formData.append('title', data.title);
-        formData.append('content', data.content);
-        formData.append('excerpt', data.excerpt);
-        formData.append('status', data.status);
-        formData.append('published_at', data.published_at);
-        formData.append('_method', 'PUT');
+        // Use regular form data for PUT request without FormData
+        const submitData = {
+            title: data.title,
+            content: data.content,
+            excerpt: data.excerpt,
+            author: data.author,
+            is_published: data.is_published,
+            published_at: data.published_at,
+        };
         
-        if (data.featured_image) {
-            formData.append('featured_image', data.featured_image);
+        // Only add image if file is selected
+        if (data.image) {
+            submitData.image = data.image;
         }
 
         put(route('articles.update', article.id), {
-            data: formData,
-            forceFormData: true,
+            data: submitData,
+            forceFormData: data.image ? true : false, // Only use FormData if image is uploaded
         });
     };
 
@@ -109,13 +113,28 @@ export default function Edit({ article }) {
                                 </div>
 
                                 <div>
-                                    <label htmlFor="featured_image" className="block text-sm font-medium text-gray-700">
+                                    <label htmlFor="author" className="block text-sm font-medium text-gray-700">
+                                        Author
+                                    </label>
+                                    <input
+                                        id="author"
+                                        type="text"
+                                        value={data.author}
+                                        onChange={(e) => setData('author', e.target.value)}
+                                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                        placeholder="Article author..."
+                                    />
+                                    {errors.author && <div className="text-red-600 text-sm mt-1">{errors.author}</div>}
+                                </div>
+
+                                <div>
+                                    <label htmlFor="image" className="block text-sm font-medium text-gray-700">
                                         Featured Image
                                     </label>
-                                    {article.featured_image && (
+                                    {(article.image || article.image_url) && (
                                         <div className="mt-2 mb-2">
                                             <img 
-                                                src={`/storage/${article.featured_image}`} 
+                                                src={article.image_url || `/storage/${article.image}`} 
                                                 alt="Current featured image" 
                                                 className="h-32 w-auto object-cover rounded-md"
                                             />
@@ -123,29 +142,26 @@ export default function Edit({ article }) {
                                         </div>
                                     )}
                                     <input
-                                        id="featured_image"
+                                        id="image"
                                         type="file"
                                         accept="image/*"
-                                        onChange={(e) => setData('featured_image', e.target.files[0])}
+                                        onChange={(e) => setData('image', e.target.files[0])}
                                         className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                                     />
-                                    {errors.featured_image && <div className="text-red-600 text-sm mt-1">{errors.featured_image}</div>}
+                                    {errors.image && <div className="text-red-600 text-sm mt-1">{errors.image}</div>}
                                 </div>
 
                                 <div>
-                                    <label htmlFor="status" className="block text-sm font-medium text-gray-700">
-                                        Status
+                                    <label className="flex items-center">
+                                        <input
+                                            type="checkbox"
+                                            checked={data.is_published}
+                                            onChange={(e) => setData('is_published', e.target.checked)}
+                                            className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                                        />
+                                        <span className="ml-2 text-sm text-gray-600">Published</span>
                                     </label>
-                                    <select
-                                        id="status"
-                                        value={data.status}
-                                        onChange={(e) => setData('status', e.target.value)}
-                                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                    >
-                                        <option value="draft">Draft</option>
-                                        <option value="published">Published</option>
-                                    </select>
-                                    {errors.status && <div className="text-red-600 text-sm mt-1">{errors.status}</div>}
+                                    {errors.is_published && <div className="text-red-600 text-sm mt-1">{errors.is_published}</div>}
                                 </div>
 
                                 <div>

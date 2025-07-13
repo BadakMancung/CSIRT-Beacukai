@@ -15,12 +15,12 @@ Route::middleware('guest')->group(function () {
     //Sebaiknya untuk register user jangan diaktifkan
     //Karena user yang bisa register hanya admin saja
     //Jika ingin mengaktifkan, silakan uncomment bagian ini
-    /*
-    ::get('register', [RegisteredUserController::class, 'create'])
+
+    Route::get('register', [RegisteredUserController::class, 'create'])
         ->name('register');
 
     Route::post('register', [RegisteredUserController::class, 'store']);
-    */
+
     Route::get('beacukai-pkimle-login', [AuthenticatedSessionController::class, 'create'])
         ->name('login');
 

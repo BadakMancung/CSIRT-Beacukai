@@ -16,12 +16,9 @@ export default function Contact() {
 
     const submit = (e) => {
         e.preventDefault();
-        // For now, just show success message without actually submitting
-        setIsSubmitted(true);
-        // In real implementation, you would:
-        // post('/contact', {
-        //     onSuccess: () => setIsSubmitted(true)
-        // });
+        post('/contact', {
+            onSuccess: () => setIsSubmitted(true)
+        });
     };
 
     if (isSubmitted) {
@@ -101,7 +98,7 @@ export default function Contact() {
                                             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                             required
                                         />
-                                        {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name}</p>}
+                                        {errors.nama && <p className="mt-1 text-sm text-red-600">{errors.nama}</p>}
                                     </div>
                                     
                                     <div>

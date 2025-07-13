@@ -3,9 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\Article;
+use App\Services\SpreadsheetService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 
 class ArticleController extends Controller
 {
@@ -14,10 +17,24 @@ class ArticleController extends Controller
      */
     public function index()
     {
-        $articles = Article::latest()->paginate(10);
+        // Use the same approach as public pages - leverage Article model
+        $articles = Article::all()->sortByDesc('created_at');
+        
+        // Manual pagination for Collection
+        $page = request()->get('page', 1);
+        $perPage = 10;
+        
+        $paginatedArticles = new \Illuminate\Pagination\LengthAwarePaginator(
+            $articles->forPage($page, $perPage)->values(),
+            $articles->count(),
+            $perPage,
+            $page,
+            ['path' => request()->url(), 'pageName' => 'page']
+        );
 
         return Inertia::render('Admin/Articles/Index', [
-            'articles' => $articles
+            'articles' => $paginatedArticles,
+            'storage_driver' => config('app.storage_driver', 'database')
         ]);
     }
 
@@ -44,24 +61,44 @@ class ArticleController extends Controller
             'published_at' => 'nullable|date'
         ]);
 
+        // Handle image upload
         if ($request->hasFile('image')) {
-            $validated['image'] = $request->file('image')->store('articles', 'public');
+            $imagePath = $request->file('image')->store('articles', 'public');
+            $validated['image'] = $imagePath;
+            $validated['image_url'] = asset('storage/' . $imagePath);
         }
 
         if (!isset($validated['published_at']) && $validated['is_published']) {
             $validated['published_at'] = now();
         }
 
-        Article::create($validated);
+        // Add default author if not provided
+        $validated['author'] = $validated['author'] ?? 'Admin';
 
-        return redirect()->route('articles.index')->with('success', 'Article created successfully.');
+        try {
+            // Use Article model which handles both database and spreadsheet
+            Article::create($validated);
+            
+            Log::info('Article successfully created', ['data' => $validated]);
+            return redirect()->route('articles.index')
+                ->with('success', 'Article berhasil disimpan!');
+        } catch (\Exception $e) {
+            Log::error('Failed to save article', ['error' => $e->getMessage()]);
+            return back()->with('error', 'Gagal menyimpan article: ' . $e->getMessage());
+        }
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(Article $article)
+    public function show($id)
     {
+        $article = Article::find($id);
+        
+        if (!$article) {
+            abort(404);
+        }
+
         return Inertia::render('Admin/Articles/Show', [
             'article' => $article
         ]);
@@ -70,8 +107,14 @@ class ArticleController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(Article $article)
+    public function edit($id)
     {
+        $article = Article::find($id);
+        
+        if (!$article) {
+            abort(404);
+        }
+
         return Inertia::render('Admin/Articles/Edit', [
             'article' => $article
         ]);
@@ -80,8 +123,14 @@ class ArticleController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Article $article)
+    public function update(Request $request, $id)
     {
+        $article = Article::find($id);
+        
+        if (!$article) {
+            abort(404);
+        }
+
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'excerpt' => 'required|string',
@@ -93,32 +142,66 @@ class ArticleController extends Controller
         ]);
 
         if ($request->hasFile('image')) {
-            if ($article->image) {
-                Storage::disk('public')->delete($article->image);
+            // Delete old image if exists
+            if (isset($article['image']) && $article['image']) {
+                Storage::disk('public')->delete($article['image']);
             }
-            $validated['image'] = $request->file('image')->store('articles', 'public');
+            $imagePath = $request->file('image')->store('articles', 'public');
+            $validated['image'] = $imagePath;
+            $validated['image_url'] = asset('storage/' . $imagePath);
         }
 
-        if (!isset($validated['published_at']) && $validated['is_published'] && !$article->published_at) {
+        if (!isset($validated['published_at']) && $validated['is_published'] && !isset($article['published_at'])) {
             $validated['published_at'] = now();
         }
 
-        $article->update($validated);
+        try {
+            // Use Article model's update method for spreadsheet
+            if (config('app.storage_driver') === 'spreadsheet') {
+                // Since Article model returns array, we need to use SpreadsheetService directly
+                $spreadsheetService = new SpreadsheetService();
+                $spreadsheetService->update('articles', (int)$id, $validated);
+            } else {
+                // For database, use Eloquent
+                \App\Models\Eloquent\Article::find($id)->update($validated);
+            }
 
-        return redirect()->route('articles.index')->with('success', 'Article updated successfully.');
+            return redirect()->route('articles.index')->with('success', 'Article updated successfully.');
+        } catch (\Exception $e) {
+            Log::error('Failed to update article', ['error' => $e->getMessage()]);
+            return back()->with('error', 'Gagal mengupdate article: ' . $e->getMessage());
+        }
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Article $article)
+    public function destroy($id)
     {
-        if ($article->image) {
-            Storage::disk('public')->delete($article->image);
+        $article = Article::find($id);
+        
+        if (!$article) {
+            abort(404);
         }
 
-        $article->delete();
+        try {
+            // Delete image if exists
+            if (isset($article['image']) && $article['image']) {
+                Storage::disk('public')->delete($article['image']);
+            }
 
-        return redirect()->route('articles.index')->with('success', 'Article deleted successfully.');
+            // Delete article using appropriate method
+            if (config('app.storage_driver') === 'spreadsheet') {
+                $spreadsheetService = new SpreadsheetService();
+                $spreadsheetService->delete('articles', (int)$id);
+            } else {
+                \App\Models\Eloquent\Article::find($id)->delete();
+            }
+
+            return redirect()->route('articles.index')->with('success', 'Article deleted successfully.');
+        } catch (\Exception $e) {
+            Log::error('Failed to delete article', ['error' => $e->getMessage()]);
+            return back()->with('error', 'Gagal menghapus article: ' . $e->getMessage());
+        }
     }
 }

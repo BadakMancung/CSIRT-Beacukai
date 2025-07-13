@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
-class Event extends Model
+class Event extends BaseModel
 {
+    protected $filename = 'events';
+    
     protected $fillable = [
         'title',
         'description',
@@ -23,18 +25,47 @@ class Event extends Model
         'is_published' => 'boolean'
     ];
 
-    public function scopePublished($query)
+    public static function published()
     {
-        return $query->where('is_published', true);
+        $instance = new static();
+        
+        if ($instance->useSpreadsheet()) {
+            return static::all()->filter(function ($event) {
+                return $event['is_published'] === true;
+            });
+        } else {
+            return collect(static::getEloquentModel()::published()->get()->toArray());
+        }
     }
 
-    public function scopeUpcoming($query)
+    public static function upcoming()
     {
-        return $query->where('event_date', '>=', now());
+        $instance = new static();
+        
+        if ($instance->useSpreadsheet()) {
+            return static::all()->filter(function ($event) {
+                return Carbon::parse($event['event_date'])->isFuture();
+            });
+        } else {
+            return collect(static::getEloquentModel()::upcoming()->get()->toArray());
+        }
     }
 
-    public function scopePast($query)
+    public static function past()
     {
-        return $query->where('event_date', '<', now());
+        $instance = new static();
+        
+        if ($instance->useSpreadsheet()) {
+            return static::all()->filter(function ($event) {
+                return Carbon::parse($event['event_date'])->isPast();
+            });
+        } else {
+            return collect(static::getEloquentModel()::past()->get()->toArray());
+        }
+    }
+
+    protected static function getEloquentModel(): string
+    {
+        return \App\Models\Eloquent\Event::class;
     }
 }

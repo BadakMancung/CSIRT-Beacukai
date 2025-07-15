@@ -73,7 +73,7 @@ export default function EventShow({ event }) {
 
                         {event.image && (
                             <img 
-                                src={`/storage/${event.image}`} 
+                                src={event.image_url || `/storage/${event.image}`} 
                                 alt={event.title}
                                 className="w-full h-64 md:h-96 object-cover rounded-xl shadow-lg mb-8"
                             />
@@ -243,12 +243,6 @@ export default function EventShow({ event }) {
                         >
                             Hubungi Kami
                         </Link>
-                        <a 
-                            href="mailto:csirt@beacukai.go.id?subject=Notifikasi Event"
-                            className="inline-flex items-center px-6 py-3 border-2 border-white text-base font-medium rounded-md text-white hover:bg-white hover:text-blue-600 transition-colors"
-                        >
-                            Subscribe Newsletter
-                        </a>
                     </div>
                 </div>
             </section>

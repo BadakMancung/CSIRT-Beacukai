@@ -79,7 +79,7 @@ export default function Index({ events }) {
                                                                     <div className="flex-shrink-0 h-12 w-12">
                                                                         <img 
                                                                             className="h-12 w-12 rounded-lg object-cover" 
-                                                                            src={`/storage/${event.image}`} 
+                                                                            src={event.image_url || `/storage/${event.image}`} 
                                                                             alt={event.title} 
                                                                         />
                                                                     </div>

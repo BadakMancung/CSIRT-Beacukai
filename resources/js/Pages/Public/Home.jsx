@@ -2,10 +2,18 @@ import { Head, Link } from '@inertiajs/react';
 import PublicLayout from '../../Layouts/PublicLayout';
 
 export default function Home({ articles }) {
+    const seoData = {
+        description: "CSIRT Bea Cukai - Computer Security Incident Response Team Direktorat Jenderal Bea dan Cukai. Melayani pelaporan insiden keamanan siber 24/7, monitoring ancaman cyber, dan perlindungan infrastruktur IT.",
+        keywords: "CSIRT Bea Cukai, Cyber Security Bea Cukai, Keamanan Siber, Incident Response Team, Bea Cukai, DJBC, Kementerian Keuangan, Lapor Insiden Siber, SOC, Security Operations Center",
+        url: "/",
+        type: "website"
+    };
+
     return (
-        <PublicLayout>
-            <Head title="Beranda - CSIRT Bea Cukai" />
-            
+        <PublicLayout 
+            title="Beranda - CSIRT Bea Cukai | Computer Security Incident Response Team" 
+            seoData={seoData}
+        >
             {/* Hero Section */}
             <section className="relative bg-gradient-to-br from-blue-900 via-blue-700 to-indigo-800 text-white overflow-hidden">
                 {/* Animated Background Elements */}
@@ -232,7 +240,7 @@ export default function Home({ articles }) {
                             <article key={article.id} className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
                                 {article.image && (
                                     <img 
-                                        src={`/storage/${article.image}`} 
+                                        src={article.image_url || `/storage/${article.image}`} 
                                         alt={article.title}
                                         className="w-full h-48 object-cover"
                                     />

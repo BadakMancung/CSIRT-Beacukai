@@ -41,7 +41,23 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+        // Using database authentication (commented out)
+        // if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+        //     RateLimiter::hit($this->throttleKey());
+
+        //     throw ValidationException::withMessages([
+        //         'email' => trans('auth.failed'),
+        //     ]);
+        // }
+
+        // Using static authentication (no database required)
+        $email = $this->input('email');
+        $password = $this->input('password');
+        
+        $adminEmail = config('auth.admin.email');
+        $adminPassword = config('auth.admin.password');
+        
+        if ($email !== $adminEmail || $password !== $adminPassword) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([

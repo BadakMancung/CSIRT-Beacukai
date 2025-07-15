@@ -25,6 +25,52 @@ class Event extends BaseModel
         'is_published' => 'boolean'
     ];
 
+    /**
+     * Override castAttributes to handle date parsing errors
+     */
+    protected function castAttributes(array $attributes): array
+    {
+        foreach ($this->casts as $key => $type) {
+            if (isset($attributes[$key])) {
+                try {
+                    if ($type === 'datetime') {
+                        // Handle datetime casting with better error handling
+                        if (empty($attributes[$key]) || is_null($attributes[$key])) {
+                            $attributes[$key] = null;
+                        } else {
+                            // Check if it's not a valid date string before parsing
+                            $dateValue = $attributes[$key];
+                            
+                            // Skip if it looks like location or other non-date string
+                            if (is_string($dateValue) && 
+                                (strlen($dateValue) > 30 || 
+                                 preg_match('/[a-zA-Z]{4,}/', $dateValue) && 
+                                 !preg_match('/\d{4}-\d{2}-\d{2}/', $dateValue))) {
+                                \Log::warning("Skipping invalid date value for $key: " . $dateValue);
+                                $attributes[$key] = null;
+                                continue;
+                            }
+                            
+                            $attributes[$key] = Carbon::parse($dateValue);
+                        }
+                    } elseif ($type === 'boolean') {
+                        $attributes[$key] = filter_var($attributes[$key], FILTER_VALIDATE_BOOLEAN);
+                    }
+                } catch (\Exception $e) {
+                    \Log::warning("Failed to cast attribute $key with value: " . $attributes[$key] . " - " . $e->getMessage());
+                    // Set to null or default value on casting error
+                    if ($type === 'datetime') {
+                        $attributes[$key] = null;
+                    } elseif ($type === 'boolean') {
+                        $attributes[$key] = false;
+                    }
+                }
+            }
+        }
+
+        return $attributes;
+    }
+
     public static function published()
     {
         $instance = new static();

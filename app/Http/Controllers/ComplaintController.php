@@ -3,11 +3,18 @@
 namespace App\Http\Controllers;
 
 use App\Models\Complaint;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class ComplaintController extends Controller
 {
+    protected $notificationService;
+
+    public function __construct(NotificationService $notificationService)
+    {
+        $this->notificationService = $notificationService;
+    }
     public function index()
     {
         // Untuk admin - melihat semua aduan
@@ -62,6 +69,9 @@ class ComplaintController extends Controller
 
         // Create complaint
         $complaint = Complaint::create($validated);
+
+        // Send notification to admins
+        $this->notificationService->sendComplaintNotification($complaint);
 
         return back()->with('success', 'Aduan berhasil dikirim! ID Aduan: #' . $complaint['id'] ?? 'AUTO');
     }

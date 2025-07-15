@@ -29,7 +29,7 @@ export default function Articles({ articles }) {
                                     <article key={article.id} className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
                                         {article.image && (
                                             <img 
-                                                src={`/storage/${article.image}`} 
+                                                src={article.image_url || `/storage/${article.image}`} 
                                                 alt={article.title}
                                                 className="w-full h-48 object-cover"
                                             />

@@ -1,11 +1,20 @@
 import { Head } from '@inertiajs/react';
 import PublicLayout from '../../Layouts/PublicLayout';
+import PartnershipLogo from '../../Components/PartnershipLogo';
 
 export default function About() {
+    const seoData = {
+        description: "Profil CSIRT Bea Cukai - Computer Security Incident Response Team Direktorat Jenderal Bea dan Cukai. Visi, misi, struktur tim, dan kerjasama dalam keamanan siber Indonesia.",
+        keywords: "Profil CSIRT Bea Cukai, Tentang CSIRT Bea Cukai, Tim Keamanan Siber Bea Cukai, Visi Misi CSIRT, Government CSIRT Indonesia, Kemenkeu CSIRT",
+        url: "/profil",
+        type: "website"
+    };
+
     return (
-        <PublicLayout>
-            <Head title="Profil - CSIRT Bea Cukai" />
-            
+        <PublicLayout 
+            title="Profil CSIRT Bea Cukai | Computer Security Incident Response Team"
+            seoData={seoData}
+        >
             {/* Hero Section */}
             <section className="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-20">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -105,6 +114,38 @@ export default function About() {
                                 </li>
                             </ul>
                         </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* Partnership Section */}
+            <section className="py-16 bg-gray-50">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="text-center mb-12">
+                        <h2 className="text-3xl font-bold text-gray-900 mb-4">Kerjasama & Kemitraan</h2>
+                        <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+                            CSIRT Bea Cukai berkolaborasi dengan berbagai instansi untuk memperkuat keamanan siber nasional
+                        </p>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        {/* Gov CSIRT */}
+                        <PartnershipLogo
+                            src="/images/govcsirt.png"
+                            alt="Logo Government CSIRT Indonesia"
+                            title="Government CSIRT Indonesia"
+                            description="Berkolaborasi dengan CSIRT pemerintah untuk koordinasi penanganan insiden keamanan siber tingkat nasional dan sharing threat intelligence."
+                            size="large"
+                        />
+                        
+                        {/* Kemenkeu CSIRT */}
+                        <PartnershipLogo
+                            src="/images/kemenkeu_csirt.png"
+                            alt="Logo Kemenkeu CSIRT"
+                            title="Kemenkeu CSIRT"
+                            description="Bagian dari ekosistem keamanan siber Kementerian Keuangan yang terintegrasi untuk melindungi seluruh infrastruktur TI di lingkungan Kemenkeu."
+                            size="large"
+                        />
                     </div>
                 </div>
             </section>

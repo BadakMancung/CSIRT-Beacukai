@@ -126,6 +126,13 @@ class EventController extends Controller
             abort(404);
         }
 
+        // Debug request data
+        \Log::info('Event Update Request Data:', [
+            'request_all' => $request->all(),
+            'has_file' => $request->hasFile('image'),
+            'method' => $request->method()
+        ]);
+
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'required|string',
@@ -134,8 +141,21 @@ class EventController extends Controller
             'location' => 'nullable|string|max:255',
             'event_date' => 'required|date',
             'event_end_date' => 'nullable|date|after:event_date',
-            'is_published' => 'boolean'
+            'is_published' => 'sometimes|boolean'
         ]);
+
+        // Convert is_published to boolean if it's a string
+        if (isset($validated['is_published'])) {
+            $validated['is_published'] = filter_var($validated['is_published'], FILTER_VALIDATE_BOOLEAN);
+        }
+
+        // Ensure dates are properly formatted
+        if (isset($validated['event_date'])) {
+            $validated['event_date'] = date('c', strtotime($validated['event_date'])); // ISO 8601 format
+        }
+        if (isset($validated['event_end_date'])) {
+            $validated['event_end_date'] = date('c', strtotime($validated['event_end_date'])); // ISO 8601 format
+        }
 
         if ($request->hasFile('image')) {
             // Delete old image if exists
@@ -148,11 +168,13 @@ class EventController extends Controller
         }
 
         try {
-            // Use appropriate method for spreadsheet or database
+            // Use Event model's update method for spreadsheet
             if (config('app.storage_driver') === 'spreadsheet') {
+                // Since Event model returns array, we need to use SpreadsheetService directly
                 $spreadsheetService = new SpreadsheetService();
                 $spreadsheetService->update('events', (int)$id, $validated);
             } else {
+                // For database, use Eloquent
                 \App\Models\Eloquent\Event::find($id)->update($validated);
             }
 
@@ -180,15 +202,16 @@ class EventController extends Controller
                 Storage::disk('public')->delete($event['image']);
             }
 
-            // Delete event using appropriate method
-            if (config('app.storage_driver') === 'spreadsheet') {
-                $spreadsheetService = new SpreadsheetService();
-                $spreadsheetService->delete('events', (int)$id);
-            } else {
-                \App\Models\Eloquent\Event::find($id)->delete();
-            }
+            // Use Event model delete method which handles both spreadsheet and database
+            $eventModel = new Event();
+            $eventModel->id = $id;
+            $result = $eventModel->delete();
 
-            return redirect()->route('events.index')->with('success', 'Event deleted successfully.');
+            if ($result) {
+                return redirect()->route('events.index')->with('success', 'Event deleted successfully.');
+            } else {
+                return back()->with('error', 'Failed to delete event.');
+            }
         } catch (\Exception $e) {
             Log::error('Failed to delete event', ['error' => $e->getMessage()]);
             return back()->with('error', 'Gagal menghapus event: ' . $e->getMessage());

@@ -115,4 +115,98 @@ class PublicController extends Controller
             'event' => $event
         ]);
     }
+
+    public function sitemap()
+    {
+        $articles = Article::published()->sortByDesc('published_at');
+        $events = Event::all()->filter(function($event) {
+            return $event['is_published'] === true;
+        });
+
+        $urls = collect([
+            [
+                'url' => route('home'),
+                'lastmod' => now()->toDateString(),
+                'changefreq' => 'daily',
+                'priority' => '1.0'
+            ],
+            [
+                'url' => route('about'),
+                'lastmod' => now()->toDateString(),
+                'changefreq' => 'monthly',
+                'priority' => '0.8'
+            ],
+            [
+                'url' => route('services'),
+                'lastmod' => now()->toDateString(),
+                'changefreq' => 'monthly',
+                'priority' => '0.8'
+            ],
+            [
+                'url' => route('public.events'),
+                'lastmod' => now()->toDateString(),
+                'changefreq' => 'weekly',
+                'priority' => '0.8'
+            ],
+            [
+                'url' => route('public.articles'),
+                'lastmod' => now()->toDateString(),
+                'changefreq' => 'daily',
+                'priority' => '0.9'
+            ],
+            [
+                'url' => route('contact'),
+                'lastmod' => now()->toDateString(),
+                'changefreq' => 'monthly',
+                'priority' => '0.7'
+            ],
+            [
+                'url' => route('rfc2350'),
+                'lastmod' => now()->toDateString(),
+                'changefreq' => 'yearly',
+                'priority' => '0.6'
+            ]
+        ]);
+
+        // Add articles to sitemap
+        foreach ($articles as $article) {
+            $urls->push([
+                'url' => route('public.articles.show', $article['id']),
+                'lastmod' => $article['updated_at'] ?? $article['created_at'],
+                'changefreq' => 'monthly',
+                'priority' => '0.7'
+            ]);
+        }
+
+        // Add events to sitemap
+        foreach ($events as $event) {
+            $urls->push([
+                'url' => route('public.events.show', $event['id']),
+                'lastmod' => $event['updated_at'] ?? $event['created_at'],
+                'changefreq' => 'monthly',
+                'priority' => '0.6'
+            ]);
+        }
+
+        $xml = view('sitemap', compact('urls'))->render();
+
+        return response($xml, 200, [
+            'Content-Type' => 'application/xml'
+        ]);
+    }
+
+    public function robots()
+    {
+        $content = "User-agent: *\n";
+        $content .= "Allow: /\n";
+        $content .= "Disallow: /admin/\n";
+        $content .= "Disallow: /dashboard/\n";
+        $content .= "Disallow: /test/\n";
+        $content .= "\n";
+        $content .= "Sitemap: " . route('sitemap') . "\n";
+
+        return response($content, 200, [
+            'Content-Type' => 'text/plain'
+        ]);
+    }
 }

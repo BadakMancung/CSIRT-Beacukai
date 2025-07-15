@@ -57,7 +57,7 @@ export default function ArticleShow({ article, relatedArticles }) {
 
                         {article.image && (
                             <img 
-                                src={`/storage/${article.image}`} 
+                                src={article.image_url || `/storage/${article.image}`} 
                                 alt={article.title}
                                 className="w-full h-64 md:h-96 object-cover rounded-xl shadow-lg mb-8"
                             />
@@ -129,7 +129,7 @@ export default function ArticleShow({ article, relatedArticles }) {
                                 <article key={relatedArticle.id} className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
                                     {relatedArticle.image && (
                                         <img 
-                                            src={`/storage/${relatedArticle.image}`} 
+                                            src={relatedArticle.image_url || `/storage/${relatedArticle.image}`} 
                                             alt={relatedArticle.title}
                                             className="w-full h-48 object-cover"
                                         />

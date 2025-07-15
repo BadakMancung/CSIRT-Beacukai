@@ -1,12 +1,17 @@
 import ApplicationLogo from '@/Components/ApplicationLogo';
+import BeaCukaiLogo from '@/Components/BeaCukaiLogo';
 import { Link } from '@inertiajs/react';
 
 export default function GuestLayout({ children }) {
     return (
         <div className="flex min-h-screen flex-col items-center bg-gray-100 pt-6 sm:justify-center sm:pt-0">
             <div>
-                <Link href="/storage/logo_beaucukai.png">
-                    <ApplicationLogo className="h-20 w-20 fill-current text-gray-500" />
+                <Link href="/">
+                    <BeaCukaiLogo 
+                        size="xlarge" 
+                        padding={true}
+                        className="transition-transform duration-300 hover:scale-110"
+                    />
                 </Link>
             </div>
 

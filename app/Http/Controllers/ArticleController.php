@@ -131,15 +131,27 @@ class ArticleController extends Controller
             abort(404);
         }
 
+        // Debug request data
+        \Log::info('Article Update Request Data:', [
+            'request_all' => $request->all(),
+            'has_file' => $request->hasFile('image'),
+            'method' => $request->method()
+        ]);
+
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'excerpt' => 'required|string',
             'content' => 'required|string',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'author' => 'nullable|string|max:255',
-            'is_published' => 'boolean',
+            'is_published' => 'sometimes|boolean',
             'published_at' => 'nullable|date'
         ]);
+
+        // Convert is_published to boolean if it's a string
+        if (isset($validated['is_published'])) {
+            $validated['is_published'] = filter_var($validated['is_published'], FILTER_VALIDATE_BOOLEAN);
+        }
 
         if ($request->hasFile('image')) {
             // Delete old image if exists

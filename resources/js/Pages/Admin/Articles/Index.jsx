@@ -70,7 +70,7 @@ export default function Index({ articles }) {
                                                                     <div className="flex-shrink-0 h-12 w-12">
                                                                         <img 
                                                                             className="h-12 w-12 rounded-lg object-cover" 
-                                                                            src={`/storage/${article.image}`} 
+                                                                            src={article.image_url || `/storage/${article.image}`} 
                                                                             alt={article.title} 
                                                                         />
                                                                     </div>

@@ -51,7 +51,7 @@ export default function Events({ upcomingEvents, pastEvents }) {
                                 <div key={event.id} className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl shadow-lg overflow-hidden border border-blue-200">
                                     {event.image && (
                                         <img 
-                                            src={`/storage/${event.image}`} 
+                                            src={event.image_url || `/storage/${event.image}`} 
                                             alt={event.title}
                                             className="w-full h-48 object-cover"
                                         />
@@ -113,7 +113,7 @@ export default function Events({ upcomingEvents, pastEvents }) {
                                 <article key={event.id} className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
                                     {event.image && (
                                         <img 
-                                            src={`/storage/${event.image}`} 
+                                            src={event.image_url || `/storage/${event.image}`} 
                                             alt={event.title}
                                             className="w-full h-48 object-cover"
                                         />

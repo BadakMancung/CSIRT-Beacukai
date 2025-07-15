@@ -29,15 +29,17 @@ class ProfileController extends Controller
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
-        $request->user()->fill($request->validated());
+        // Using database authentication (commented out)
+        // $request->user()->fill($request->validated());
 
-        if ($request->user()->isDirty('email')) {
-            $request->user()->email_verified_at = null;
-        }
+        // if ($request->user()->isDirty('email')) {
+        //     $request->user()->email_verified_at = null;
+        // }
 
-        $request->user()->save();
+        // $request->user()->save();
 
-        return Redirect::route('profile.edit');
+        // Static authentication - profile updates not supported
+        return Redirect::route('profile.edit')->with('status', 'Profile updates are not available for static authentication.');
     }
 
     /**
@@ -45,19 +47,23 @@ class ProfileController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
-        $request->validate([
-            'password' => ['required', 'current_password'],
-        ]);
+        // Using database authentication (commented out)
+        // $request->validate([
+        //     'password' => ['required', 'current_password'],
+        // ]);
 
-        $user = $request->user();
+        // $user = $request->user();
 
-        Auth::logout();
+        // Auth::logout();
 
-        $user->delete();
+        // $user->delete();
 
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+        // $request->session()->invalidate();
+        // $request->session()->regenerateToken();
 
-        return Redirect::to('/');
+        // return Redirect::to('/');
+
+        // Static authentication - account deletion not supported
+        return Redirect::route('profile.edit')->with('status', 'Account deletion is not available for static authentication.');
     }
 }

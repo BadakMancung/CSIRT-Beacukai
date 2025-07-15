@@ -14,7 +14,7 @@ return [
     */
 
     'defaults' => [
-        'guard' => env('AUTH_GUARD', 'web'),
+        'guard' => env('AUTH_GUARD', 'static'),
         'passwords' => env('AUTH_PASSWORD_BROKER', 'users'),
     ],
 
@@ -36,9 +36,21 @@ return [
     */
 
     'guards' => [
+        // Database-based authentication (commented out)
+        // 'web' => [
+        //     'driver' => 'session',
+        //     'provider' => 'users',
+        // ],
+        
+        // Static authentication (no database required)
+        'static' => [
+            'driver' => 'static',
+            'provider' => 'static',
+        ],
+        
         'web' => [
-            'driver' => 'session',
-            'provider' => 'users',
+            'driver' => 'static',
+            'provider' => 'static',
         ],
     ],
 
@@ -60,15 +72,28 @@ return [
     */
 
     'providers' => [
-        'users' => [
-            'driver' => 'eloquent',
-            'model' => env('AUTH_MODEL', App\Models\User::class),
-        ],
+        // Database-based user provider (commented out)
+        // 'users' => [
+        //     'driver' => 'eloquent',
+        //     'model' => env('AUTH_MODEL', App\Models\User::class),
+        // ],
 
         // 'users' => [
         //     'driver' => 'database',
         //     'table' => 'users',
         // ],
+        
+        // Static user provider (no database required)
+        'static' => [
+            'driver' => 'static',
+        ],
+    ],
+
+    // Admin credentials for static authentication
+    'admin' => [
+        'email' => env('ADMIN_EMAIL', 'admin@csirt-beacukai.go.id'),
+        'password' => env('ADMIN_PASSWORD', 'admin123'),
+        'name' => env('ADMIN_NAME', 'Admin CSIRT Bea Cukai'),
     ],
 
     /*

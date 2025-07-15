@@ -5,6 +5,7 @@ use App\Http\Controllers\PublicController;
 use App\Http\Controllers\ArticleController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\ContactController;
+use App\Http\Controllers\NotificationController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -18,6 +19,10 @@ Route::get('/event/{id}', [PublicController::class, 'eventShow'])->name('public.
 Route::get('/hubungi-kami', [PublicController::class, 'contact'])->name('contact');
 Route::get('/artikel', [PublicController::class, 'articles'])->name('public.articles');
 Route::get('/artikel/{id}', [PublicController::class, 'articleShow'])->name('public.articles.show');
+
+// SEO Routes
+Route::get('/sitemap.xml', [PublicController::class, 'sitemap'])->name('sitemap');
+Route::get('/robots.txt', [PublicController::class, 'robots'])->name('robots');
 
 // Contact Form Route
 Route::post('/contact', [ContactController::class, 'store'])->name('contact.store');
@@ -40,6 +45,10 @@ Route::middleware('auth')->group(function () {
     // Admin routes for CRUD
     Route::resource('articles', ArticleController::class);
     Route::resource('events', EventController::class);
+    Route::resource('notifications', NotificationController::class)->except(['show']);
+    
+    // Additional notification routes
+    Route::post('/notifications/test-email', [NotificationController::class, 'testEmail'])->name('notifications.test');
 });
 
 require __DIR__.'/auth.php';

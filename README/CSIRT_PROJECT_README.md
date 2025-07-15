@@ -34,8 +34,8 @@ Accessible at `/dashboard` (requires authentication)
 ## Technical Stack
 
 ### Backend (Laravel)
-- **Framework**: Laravel 11.x
-- **Database**: SQLite (for development)
+- **Framework**: Laravel 12
+- **Database**: spreadsheet
 - **Authentication**: Laravel Breeze
 - **File Storage**: Laravel Storage (with symlink)
 

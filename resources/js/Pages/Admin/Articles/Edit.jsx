@@ -1,5 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, useForm, Link } from '@inertiajs/react';
+import { Head, useForm, Link, router } from '@inertiajs/react';
 
 export default function Edit({ article }) {
     // Format datetime for HTML datetime-local input
@@ -22,25 +22,31 @@ export default function Edit({ article }) {
     const submit = (e) => {
         e.preventDefault();
         
-        // Use regular form data for PUT request without FormData
-        const submitData = {
-            title: data.title,
-            content: data.content,
-            excerpt: data.excerpt,
-            author: data.author,
-            is_published: data.is_published,
-            published_at: data.published_at,
-        };
-        
-        // Only add image if file is selected
+        // Create FormData if image is uploaded, otherwise use regular object
         if (data.image) {
-            submitData.image = data.image;
+            // Use FormData for file upload
+            const formData = new FormData();
+            formData.append('title', data.title);
+            formData.append('content', data.content);
+            formData.append('excerpt', data.excerpt);
+            formData.append('author', data.author);
+            formData.append('is_published', data.is_published ? '1' : '0');
+            formData.append('published_at', data.published_at);
+            formData.append('image', data.image);
+            formData.append('_method', 'PUT'); // Laravel method spoofing
+            
+            // Use post with _method for file uploads
+            router.post(route('articles.update', article.id), formData, {
+                forceFormData: true,
+                preserveScroll: true,
+                onSuccess: () => {
+                    // Handle success
+                }
+            });
+        } else {
+            // Regular PUT request without file
+            put(route('articles.update', article.id));
         }
-
-        put(route('articles.update', article.id), {
-            data: submitData,
-            forceFormData: data.image ? true : false, // Only use FormData if image is uploaded
-        });
     };
 
     return (

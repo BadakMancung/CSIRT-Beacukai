@@ -31,6 +31,11 @@ return [
         'web_app_url' => env('GOOGLE_SHEETS_WEB_APP_URL'),
     ],
 
+    'notifications' => [
+        'emails' => env('NOTIFICATION_EMAILS', ''),
+        'admin_email' => env('ADMIN_NOTIFICATION_EMAIL', env('ADMIN_EMAIL')),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

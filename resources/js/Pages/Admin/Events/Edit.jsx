@@ -1,5 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, useForm, Link } from '@inertiajs/react';
+import { Head, useForm, Link, router } from '@inertiajs/react';
 
 export default function Edit({ event }) {
     // Format datetime for HTML datetime-local input
@@ -9,40 +9,46 @@ export default function Edit({ event }) {
         return date.toISOString().slice(0, 16);
     };
 
-    const { data, setData, put, processing, errors } = useForm({
+    const { data, setData, patch, processing, errors } = useForm({
         title: event.title || '',
         description: event.description || '',
+        content: event.content || '',
         location: event.location || '',
         event_date: formatDateTimeLocal(event.event_date),
-        end_date: formatDateTimeLocal(event.end_date),
-        registration_url: event.registration_url || '',
-        max_participants: event.max_participants || '',
-        featured_image: null,
-        status: event.status || 'upcoming',
+        event_end_date: formatDateTimeLocal(event.event_end_date),
+        image: null,
+        is_published: Boolean(event.is_published),
     });
 
     const submit = (e) => {
         e.preventDefault();
         
-        const formData = new FormData();
-        formData.append('title', data.title);
-        formData.append('description', data.description);
-        formData.append('location', data.location);
-        formData.append('event_date', data.event_date);
-        formData.append('end_date', data.end_date);
-        formData.append('registration_url', data.registration_url);
-        formData.append('max_participants', data.max_participants);
-        formData.append('status', data.status);
-        formData.append('_method', 'PUT');
-        
-        if (data.featured_image) {
-            formData.append('featured_image', data.featured_image);
+        // Create FormData if image is uploaded, otherwise use regular object
+        if (data.image) {
+            // Use FormData for file upload
+            const formData = new FormData();
+            formData.append('title', data.title);
+            formData.append('description', data.description);
+            formData.append('content', data.content);
+            formData.append('location', data.location);
+            formData.append('event_date', data.event_date);
+            formData.append('event_end_date', data.event_end_date);
+            formData.append('is_published', data.is_published ? '1' : '0');
+            formData.append('image', data.image);
+            formData.append('_method', 'PUT'); // Laravel method spoofing
+            
+            // Use post with _method for file uploads
+            router.post(route('events.update', event.id), formData, {
+                forceFormData: true,
+                preserveScroll: true,
+                onSuccess: () => {
+                    // Handle success
+                }
+            });
+        } else {
+            // Regular PUT request without file
+            patch(route('events.update', event.id));
         }
-
-        put(route('events.update', event.id), {
-            data: formData,
-            forceFormData: true,
-        });
     };
 
     return (
@@ -90,13 +96,28 @@ export default function Edit({ event }) {
                                     </label>
                                     <textarea
                                         id="description"
-                                        rows="6"
+                                        rows="4"
                                         value={data.description}
                                         onChange={(e) => setData('description', e.target.value)}
                                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                                         required
                                     />
                                     {errors.description && <div className="text-red-600 text-sm mt-1">{errors.description}</div>}
+                                </div>
+
+                                <div>
+                                    <label htmlFor="content" className="block text-sm font-medium text-gray-700">
+                                        Content
+                                    </label>
+                                    <textarea
+                                        id="content"
+                                        rows="6"
+                                        value={data.content}
+                                        onChange={(e) => setData('content', e.target.value)}
+                                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                        required
+                                    />
+                                    {errors.content && <div className="text-red-600 text-sm mt-1">{errors.content}</div>}
                                 </div>
 
                                 <div>
@@ -131,91 +152,58 @@ export default function Edit({ event }) {
                                     </div>
 
                                     <div>
-                                        <label htmlFor="end_date" className="block text-sm font-medium text-gray-700">
+                                        <label htmlFor="event_end_date" className="block text-sm font-medium text-gray-700">
                                             End Date & Time
                                         </label>
                                         <input
-                                            id="end_date"
+                                            id="event_end_date"
                                             type="datetime-local"
-                                            value={data.end_date}
-                                            onChange={(e) => setData('end_date', e.target.value)}
+                                            value={data.event_end_date}
+                                            onChange={(e) => setData('event_end_date', e.target.value)}
                                             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                                         />
-                                        {errors.end_date && <div className="text-red-600 text-sm mt-1">{errors.end_date}</div>}
+                                        {errors.event_end_date && <div className="text-red-600 text-sm mt-1">{errors.event_end_date}</div>}
                                     </div>
                                 </div>
 
                                 <div>
-                                    <label htmlFor="registration_url" className="block text-sm font-medium text-gray-700">
-                                        Registration URL
+                                    <label htmlFor="image" className="block text-sm font-medium text-gray-700">
+                                        Event Image
                                     </label>
-                                    <input
-                                        id="registration_url"
-                                        type="url"
-                                        value={data.registration_url}
-                                        onChange={(e) => setData('registration_url', e.target.value)}
-                                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                        placeholder="https://example.com/register"
-                                    />
-                                    {errors.registration_url && <div className="text-red-600 text-sm mt-1">{errors.registration_url}</div>}
-                                </div>
-
-                                <div>
-                                    <label htmlFor="max_participants" className="block text-sm font-medium text-gray-700">
-                                        Maximum Participants
-                                    </label>
-                                    <input
-                                        id="max_participants"
-                                        type="number"
-                                        min="1"
-                                        value={data.max_participants}
-                                        onChange={(e) => setData('max_participants', e.target.value)}
-                                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                        placeholder="e.g., 100"
-                                    />
-                                    {errors.max_participants && <div className="text-red-600 text-sm mt-1">{errors.max_participants}</div>}
-                                </div>
-
-                                <div>
-                                    <label htmlFor="featured_image" className="block text-sm font-medium text-gray-700">
-                                        Featured Image
-                                    </label>
-                                    {event.featured_image && (
+                                    {event.image && (
                                         <div className="mt-2 mb-2">
                                             <img 
-                                                src={`/storage/${event.featured_image}`} 
-                                                alt="Current featured image" 
+                                                src={event.image.startsWith('http') ? event.image : `/storage/${event.image}`} 
+                                                alt="Current event image" 
                                                 className="h-32 w-auto object-cover rounded-md"
                                             />
                                             <p className="text-sm text-gray-500 mt-1">Current image</p>
                                         </div>
                                     )}
                                     <input
-                                        id="featured_image"
+                                        id="image"
                                         type="file"
                                         accept="image/*"
-                                        onChange={(e) => setData('featured_image', e.target.files[0])}
+                                        onChange={(e) => setData('image', e.target.files[0])}
                                         className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                                     />
-                                    {errors.featured_image && <div className="text-red-600 text-sm mt-1">{errors.featured_image}</div>}
+                                    {errors.image && <div className="text-red-600 text-sm mt-1">{errors.image}</div>}
                                 </div>
 
                                 <div>
-                                    <label htmlFor="status" className="block text-sm font-medium text-gray-700">
-                                        Status
+                                    <label htmlFor="is_published" className="block text-sm font-medium text-gray-700">
+                                        Publication Status
                                     </label>
                                     <select
-                                        id="status"
-                                        value={data.status}
-                                        onChange={(e) => setData('status', e.target.value)}
+                                        id="is_published"
+                                        value={data.is_published ? 'true' : 'false'}
+                                        onChange={(e) => setData('is_published', e.target.value === 'true')}
                                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                                     >
-                                        <option value="upcoming">Upcoming</option>
-                                        <option value="ongoing">Ongoing</option>
-                                        <option value="completed">Completed</option>
-                                        <option value="cancelled">Cancelled</option>
+                                        <option value="false">Draft</option>
+                                        <option value="true">Published</option>
                                     </select>
-                                    {errors.status && <div className="text-red-600 text-sm mt-1">{errors.status}</div>}
+                                    {errors.is_published && <div className="text-red-600 text-sm mt-1">{errors.is_published}</div>}
                                 </div>
 
                                 <div className="flex justify-end">

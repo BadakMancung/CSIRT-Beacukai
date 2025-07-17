@@ -27,6 +27,9 @@ Route::get('/robots.txt', [PublicController::class, 'robots'])->name('robots');
 // Contact Form Route
 Route::post('/contact', [ContactController::class, 'store'])->name('contact.store');
 
+// Secure File Access Routes (Public with token-based access)
+Route::get('/secure-file/{token}', [ContactController::class, 'accessViaTemporaryToken'])->name('secure-file.temp');
+
 // RFC2350 page - static content for now
 Route::get('/rfc2350', function () {
     return Inertia::render('Public/RFC2350');
@@ -49,6 +52,19 @@ Route::middleware('auth')->group(function () {
     
     // Additional notification routes
     Route::post('/notifications/test-email', [NotificationController::class, 'testEmail'])->name('notifications.test');
+    
+    // Secure Attachment Admin Routes
+    Route::prefix('admin/secure-attachments')->group(function () {
+        Route::get('/{fileId}/download', [ContactController::class, 'downloadSecureAttachment'])->name('admin.secure-attachment.download');
+        Route::get('/{fileId}/info', [ContactController::class, 'viewAttachmentInfo'])->name('admin.secure-attachment.info');
+        Route::get('/{fileId}/view', [ContactController::class, 'viewAttachmentInfo'])->name('admin.secure-attachment.view');
+        Route::post('/{fileId}/temp-access', [ContactController::class, 'generateTempAccess'])->name('admin.secure-attachment.temp-access');
+        Route::post('/{fileId}/expire', [ContactController::class, 'expireAttachment'])->name('admin.secure-attachment.expire');
+        Route::get('/{fileId}/logs', [ContactController::class, 'getAccessLogs'])->name('admin.secure-attachment.logs');
+    });
+    
+    // Secure Local File Download (TEMPORARY)
+    Route::get('/admin/secure-local/{filename}', [ContactController::class, 'downloadSecureLocalAttachment'])->name('admin.secure-local.download');
 });
 
 require __DIR__.'/auth.php';

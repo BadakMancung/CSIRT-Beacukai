@@ -84,24 +84,16 @@
         </div>
         
         <div class="detail-item">
-            <span class="label">Instansi:</span> {{ $contact['instansi'] ?? $contact['organization'] ?? 'N/A' }}
-        </div>
-        
-        <div class="detail-item">
-            <span class="label">Jenis Pengaduan:</span> {{ $contact['jenis_aduan'] ?? $contact['complaint_type'] ?? 'N/A' }}
+            <span class="label">Jenis Pengaduan:</span> {{ $contact['incident_type'] ?? 'N/A' }}
         </div>
         
         <div class="detail-item">
             <span class="label">Subjek:</span> {{ $contact['subjek'] ?? $contact['subject'] ?? 'N/A' }}
         </div>
-        
+         
         <div class="detail-item">
             <span class="label">Pesan:</span><br>
             {{ $contact['deskripsi'] ?? $contact['message'] ?? $contact['description'] ?? 'N/A' }}
-        </div>
-        
-        <div class="detail-item">
-            <span class="label">Tanggal Kejadian:</span> {{ $contact['tanggal_kejadian'] ?? $contact['incident_date'] ?? 'N/A' }}
         </div>
         
         <div class="detail-item">
@@ -111,9 +103,56 @@
         @if(isset($contact['attachment']) && $contact['attachment'])
         <div class="detail-item">
             <span class="label">Lampiran:</span> 
-            <a href="{{ $contact['attachment_url'] ?? asset('storage/' . $contact['attachment']) }}" target="_blank" style="color: #1e40af; text-decoration: underline;">
-                📎 Lihat Lampiran
-            </a>
+            @if(isset($contact['attachment_type']) && $contact['attachment_type'] === 'google_drive')
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <a href="{{ $contact['attachment'] }}" target="_blank" style="color: #1e40af; text-decoration: underline;">
+                        🔗 Lihat File di Google Drive (Secure)
+                    </a>
+                    <span style="background-color: #22c55e; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px;">
+                        LEVEL 3 SECURITY
+                    </span>
+                </div>
+                <div style="font-size: 12px; color: #64748b; margin-top: 5px;">
+                    📂 File disimpan aman di Google Drive dengan enkripsi
+                </div>
+                @if(isset($contact['attachment_original_name']))
+                <div style="font-size: 12px; color: #374151; margin-top: 3px;">
+                    📄 Original: {{ $contact['attachment_original_name'] }}
+                </div>
+                @endif
+            @elseif(str_contains($contact['attachment'], 'secure-attachment'))
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <a href="{{ $contact['attachment'] }}" target="_blank" style="color: #1e40af; text-decoration: underline;">
+                        🔐 Lihat Lampiran Aman (Login Required)
+                    </a>
+                    <span style="background-color: #22c55e; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px;">
+                        LEVEL 3 SECURITY
+                    </span>
+                </div>
+                @if(isset($contact['attachment_expires']))
+                <div style="font-size: 12px; color: #ef4444; margin-top: 5px;">
+                    ⏰ Expires: {{ \Carbon\Carbon::parse($contact['attachment_expires'])->format('d M Y H:i') }}
+                </div>
+                @endif
+            @elseif(isset($contact['attachment_type']) && $contact['attachment_type'] === 'secure_local')
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <a href="{{ route('admin.secure-local.download', $contact['attachment']) }}" target="_blank" style="color: #1e40af; text-decoration: underline;">
+                        🔐 Download Secure File (Admin Login Required)
+                    </a>
+                    <span style="background-color: #f59e0b; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px;">
+                        SECURE LOCAL
+                    </span>
+                </div>
+                @if(isset($contact['attachment_expires']))
+                <div style="font-size: 12px; color: #ef4444; margin-top: 5px;">
+                    ⏰ Expires: {{ \Carbon\Carbon::parse($contact['attachment_expires'])->format('d M Y H:i') }}
+                </div>
+                @endif
+            @else
+                <a href="{{ $contact['attachment_url'] ?? asset('storage/' . $contact['attachment']) }}" target="_blank" style="color: #1e40af; text-decoration: underline;">
+                    📎 Lihat Lampiran
+                </a>
+            @endif
         </div>
         @endif
         

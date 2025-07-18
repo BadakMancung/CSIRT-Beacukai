@@ -39,75 +39,77 @@ class ContactController extends Controller
 
         $validated = $validator->validated();
 
-        // Generate unique ID untuk contact
-        $contactId = 'CONTACT_' . time() . '_' . uniqid();
-
-        // Handle file upload ke Google Drive
-        $secureFileData = null;
-        if ($request->hasFile('attachment')) {
-            try {
-                // Upload file ke Google Drive via Google Apps Script
-                $file = $request->file('attachment');
-                $uploadResult = $this->uploadFileToGoogleDrive($file, $contactId);
-                
-                if ($uploadResult['success']) {
-                    // Store Google Drive link data for email notification
-                    $validated['attachment'] = $uploadResult['file_url'];
-                    $validated['attachment_drive_id'] = $uploadResult['file_id'];
-                    $validated['attachment_type'] = 'google_drive';
-                    $validated['attachment_original_name'] = $uploadResult['original_name'];
-                    $validated['attachment_secure_filename'] = $uploadResult['secure_filename'];
-                    $validated['attachment_upload_time'] = $uploadResult['upload_time'];
-                    
-                    Log::info('File uploaded to Google Drive successfully', [
-                        'contact_id' => $contactId,
-                        'drive_file_id' => $uploadResult['file_id'],
-                        'original_name' => $uploadResult['original_name'],
-                        'secure_filename' => $uploadResult['secure_filename'],
-                        'drive_link' => $uploadResult['file_url']
-                    ]);
-                } else {
-                    throw new \Exception('Failed to upload to Google Drive: ' . ($uploadResult['error'] ?? 'Unknown error'));
-                }
-            } catch (\Exception $e) {
-                Log::error('Google Drive upload failed', [
-                    'contact_id' => $contactId,
-                    'error' => $e->getMessage()
-                ]);
-                
-                // Fallback: Don't store file, just log the attempt
-                $validated['attachment'] = null;
-                $validated['attachment_error'] = 'Upload failed - file not stored for security';
-                
-                Log::warning('File upload failed - no file stored for security', [
-                    'contact_id' => $contactId,
-                    'filename' => $request->file('attachment')->getClientOriginalName()
-                ]);
-            }
-        }
-
-        // Add timestamp dan status
+        // Add timestamp dan status (tanpa ID dulu)
         $data = array_merge($validated, [
-            'id' => $contactId,
             'submitted_at' => now()->toDateTimeString(),
             'status' => 'new',
             'created_at' => now()->toDateTimeString(),
             'updated_at' => now()->toDateTimeString()
         ]);
 
-        // Kirim ke Google Sheets dengan sistem backup
-        $result = $this->sendToGoogleSheets($data);
+        // STEP 1: Kirim ke Google Sheets dulu untuk mendapatkan nomor aduan yang benar
+        $sheetsResult = $this->sendToGoogleSheets($data);
+        
+        if (!$sheetsResult['success']) {
+            Log::error('Failed to create contact in Google Sheets', ['error' => $sheetsResult['error']]);
+            return back()->with('error', 'Terjadi kesalahan sistem. Silakan coba lagi.');
+        }
 
-        // Send notification to admins
+        // Extract nomor aduan dari response Google Sheets
+        $nomorAduan = null;
+        if (isset($sheetsResult['data']['id'])) {
+            $nomorAduan = $sheetsResult['data']['id'];
+            $data['id'] = $nomorAduan; // Update data dengan nomor aduan yang benar
+        } else {
+            Log::error('No ID returned from Google Sheets', ['response' => $sheetsResult]);
+            return back()->with('error', 'Gagal mendapatkan nomor aduan. Silakan coba lagi.');
+        }
+
+        Log::info('Contact created in Google Sheets with ID', ['nomor_aduan' => $nomorAduan]);
+
+        // STEP 2: Upload file dengan nomor aduan yang benar (jika ada file)
+        if ($request->hasFile('attachment') && $nomorAduan) {
+            try {
+                $file = $request->file('attachment');
+                $uploadResult = $this->uploadFileToGoogleDrive($file, $nomorAduan);
+                
+                if ($uploadResult['success']) {
+                    // Update data dengan informasi attachment Google Drive untuk notification
+                    $data['attachment'] = $uploadResult['file_url'];
+                    $data['attachment_type'] = 'google_drive';
+                    $data['attachment_drive_id'] = $uploadResult['file_id'];
+                    $data['attachment_original_name'] = $uploadResult['original_name'];
+                    $data['attachment_secure_filename'] = $uploadResult['secure_filename'];
+                    $data['attachment_upload_time'] = $uploadResult['upload_time'];
+                    
+                    Log::info('File uploaded successfully with correct nomor aduan', [
+                        'nomor_aduan' => $nomorAduan,
+                        'file_id' => $uploadResult['file_id'],
+                        'file_url' => $uploadResult['file_url']
+                    ]);
+                } else {
+                    Log::warning('File upload failed but contact already created', [
+                        'nomor_aduan' => $nomorAduan,
+                        'error' => $uploadResult['error'] ?? 'Unknown error'
+                    ]);
+                }
+            } catch (\Exception $e) {
+                Log::error('File upload exception but contact already created', [
+                    'nomor_aduan' => $nomorAduan,
+                    'error' => $e->getMessage()
+                ]);
+            }
+        }
+
+        // STEP 3: Send notification to admins dengan data yang sudah lengkap
         $this->notificationService->sendContactNotification($data);
 
-        if ($result['success']) {
-            Log::info('Contact form successfully processed', ['method' => $result['method']]);
-            return back()->with('success', 'Pesan berhasil dikirim! Tim CSIRT akan segera menghubungi Anda.');
-        } else {
-            Log::error('Contact form failed to process', ['error' => $result['error']]);
-            return back()->with('success', 'Pesan berhasil dikirim! Tim CSIRT akan segera menghubungi Anda.');
-        }
+        Log::info('Contact form successfully processed', [
+            'nomor_aduan' => $nomorAduan,
+            'method' => $sheetsResult['method']
+        ]);
+        
+        return back()->with('success', "Pesan berhasil dikirim dengan Nomor Aduan: {$nomorAduan}. Tim CSIRT akan segera menghubungi Anda.");
     }
 
     private function sendToGoogleSheets($data)
@@ -153,7 +155,11 @@ class ContactController extends Controller
                         'data' => $data,
                         'response' => $responseData
                     ]);
-                    return ['success' => true, 'method' => 'google_sheets'];
+                    return [
+                        'success' => true, 
+                        'method' => 'google_sheets',
+                        'data' => $responseData['data'] ?? null
+                    ];
                 } else {
                     Log::error('Google Sheets returned error', [
                         'response' => $responseData,
@@ -215,7 +221,17 @@ class ContactController extends Controller
                 'data' => $data
             ]);
             
-            return ['success' => true, 'method' => 'local_backup'];
+            // Generate backup ID jika data tidak punya ID
+            $backupId = $data['id'] ?? 'BACKUP-' . date('Ymd') . '-' . str_pad(mt_rand(1, 9999), 4, '0', STR_PAD_LEFT);
+            
+            return [
+                'success' => true, 
+                'method' => 'local_backup',
+                'data' => [
+                    'id' => $backupId,
+                    'backup_file' => $filename
+                ]
+            ];
             
         } catch (\Exception $e) {
             Log::error('Failed to save to local backup', [
@@ -224,108 +240,6 @@ class ContactController extends Controller
             ]);
             
             return ['success' => false, 'method' => 'none', 'error' => $e->getMessage()];
-        }
-    }
-
-    /**
-     * Download secure attachment (Admin only)
-     */
-    public function downloadSecureAttachment($fileId)
-    {
-        try {
-            // Check if user is authenticated (admin)
-            if (!auth()->check()) {
-                abort(401, 'Authentication required');
-            }
-
-            $result = $this->secureGoogleDriveService->downloadSecureFile(
-                $fileId, 
-                'Admin download by ' . auth()->user()->email
-            );
-
-            if ($result['success']) {
-                return response($result['content'])
-                    ->header('Content-Type', $result['mime_type'])
-                    ->header('Content-Disposition', 'attachment; filename="' . $result['filename'] . '"')
-                    ->header('Content-Length', $result['file_size']);
-            } else {
-                abort(404, 'File not found or expired');
-            }
-
-        } catch (\Exception $e) {
-            Log::error('Failed to download secure attachment', [
-                'file_id' => $fileId,
-                'admin' => auth()->user()->email ?? 'unknown',
-                'error' => $e->getMessage()
-            ]);
-            
-            abort(500, 'Failed to download file');
-        }
-    }
-
-    /**
-     * View attachment info (Admin only)
-     */
-    public function viewAttachmentInfo($fileId)
-    {
-        try {
-            if (!auth()->check()) {
-                abort(401, 'Authentication required');
-            }
-
-            $metadata = $this->secureGoogleDriveService->getFileMetadata($fileId);
-            
-            if ($metadata['success']) {
-                return response()->json([
-                    'success' => true,
-                    'data' => $metadata['data']
-                ]);
-            } else {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'File not found'
-                ], 404);
-            }
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to get file info'
-            ], 500);
-        }
-    }
-
-    /**
-     * Generate temporary access token (Admin only)
-     */
-    public function generateTempAccess($fileId, Request $request)
-    {
-        try {
-            if (!auth()->check()) {
-                abort(401, 'Authentication required');
-            }
-
-            $expiresInMinutes = $request->input('expires_in_minutes', 60);
-            
-            $result = $this->secureGoogleDriveService->generateTemporaryAccess($fileId, $expiresInMinutes);
-            
-            if ($result['success']) {
-                return response()->json([
-                    'success' => true,
-                    'data' => $result
-                ]);
-            } else {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Failed to generate temporary access'
-                ], 500);
-            }
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to generate temporary access'
-            ], 500);
         }
     }
 
@@ -385,95 +299,6 @@ class ContactController extends Controller
             ]);
             
             abort(500, 'Failed to access file');
-        }
-    }
-
-    /**
-     * Expire attachment manually (Admin only)
-     */
-    public function expireAttachment($fileId, Request $request)
-    {
-        try {
-            if (!auth()->check()) {
-                abort(401, 'Authentication required');
-            }
-
-            $reason = $request->input('reason', 'Manual expiration by admin');
-            
-            $result = $this->secureGoogleDriveService->expireFile($fileId, $reason);
-            
-            return response()->json([
-                'success' => $result,
-                'message' => $result ? 'File expired successfully' : 'Failed to expire file'
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to expire file'
-            ], 500);
-        }
-    }
-
-    /**
-     * Get file access logs (Admin only)
-     */
-    public function getAccessLogs($fileId)
-    {
-        try {
-            if (!auth()->check()) {
-                abort(401, 'Authentication required');
-            }
-
-            $logs = $this->secureGoogleDriveService->getAccessLogs($fileId);
-            
-            return response()->json([
-                'success' => true,
-                'data' => $logs
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to get access logs'
-            ], 500);
-        }
-    }
-
-    /**
-     * Download secure attachment from local storage (Admin only)
-     */
-    public function downloadSecureLocalAttachment($filename)
-    {
-        try {
-            // Check if user is authenticated (admin)
-            if (!auth()->check()) {
-                abort(401, 'Authentication required');
-            }
-
-            $filePath = storage_path('app/secure_contacts/' . $filename);
-            
-            if (!file_exists($filePath)) {
-                abort(404, 'File not found');
-            }
-
-            // Log access untuk audit
-            Log::info('Secure local attachment accessed', [
-                'filename' => $filename,
-                'admin_user' => auth()->user()->email ?? 'system',
-                'ip' => request()->ip()
-            ]);
-
-            return response()->download($filePath);
-
-        } catch (\Exception $e) {
-            Log::error('Failed to download secure local attachment', [
-                'filename' => $filename,
-                'admin' => auth()->user()->email ?? 'unknown',
-                'error' => $e->getMessage()
-            ]);
-            
-            abort(500, 'Failed to download file');
         }
     }
 
@@ -548,7 +373,24 @@ class ContactController extends Controller
                 'response' => $responseData
             ]);
 
-            return $responseData;
+            // Extract data dari nested response untuk compatibility
+            if ($responseData['success'] && isset($responseData['data'])) {
+                return [
+                    'success' => true,
+                    'file_id' => $responseData['data']['file_id'],
+                    'file_url' => $responseData['data']['file_url'],
+                    'secure_filename' => $responseData['data']['secure_filename'],
+                    'original_name' => $responseData['data']['original_name'],
+                    'upload_time' => $responseData['data']['upload_time'],
+                    'security_level' => $responseData['data']['security_level'] ?? 'Level-3-Enterprise-Security',
+                    'contact_id' => $responseData['data']['contact_id']
+                ];
+            } else {
+                return [
+                    'success' => false,
+                    'error' => $responseData['message'] ?? 'Unknown upload error'
+                ];
+            }
 
         } catch (\Exception $e) {
             Log::error('Failed to upload file to Google Drive', [

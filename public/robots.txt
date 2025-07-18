@@ -1,2 +1,72 @@
+# CSIRT Bea Cukai - SEO Protection Configuration
+# Last Updated: 2025-07-18
+
 User-agent: *
-Disallow:
+Crawl-delay: 1
+
+# Block Admin Areas
+Disallow: /admin/
+Disallow: /dashboard/
+Disallow: /panel/
+
+# Block API Endpoints
+Disallow: /api/
+Disallow: /webhook/
+Disallow: /callback/
+
+# Block File Storage Areas
+Disallow: /storage/
+Disallow: /uploads/
+Disallow: /files/
+Disallow: /secure-contact-file/
+Disallow: /temp/
+Disallow: /cache/
+
+# Block Configuration & System Files
+Disallow: /config/
+Disallow: /vendor/
+Disallow: /node_modules/
+Disallow: /.env
+Disallow: /.git/
+Disallow: /composer.json
+Disallow: /package.json
+
+# Block Specific File Types (Security)
+Disallow: /*.pdf$
+Disallow: /*.doc$
+Disallow: /*.docx$
+Disallow: /*.xls$
+Disallow: /*.xlsx$
+Disallow: /*.zip$
+Disallow: /*.rar$
+Disallow: /*.sql$
+Disallow: /*.log$
+
+# Block Search & Private Pages
+Disallow: /search?
+Disallow: /private/
+Disallow: /internal/
+Disallow: /backup/
+
+# Allow Public Areas
+Allow: /
+Allow: /contact/
+Allow: /articles/
+Allow: /events/
+Allow: /about/
+Allow: /news/
+Allow: /public/
+
+# Block All Bots from Sensitive Areas
+User-agent: Googlebot
+Disallow: /admin/
+Disallow: /storage/
+Disallow: /api/
+
+User-agent: Bingbot
+Disallow: /admin/
+Disallow: /storage/
+Disallow: /api/
+
+# Sitemap Location (Opsional - jika ada)
+# Sitemap: https://csirt.beacukai.go.id/sitemap.xml

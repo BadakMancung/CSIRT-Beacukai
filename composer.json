@@ -13,6 +13,7 @@
         "laravel/tinker": "^2.10.1",
         "phpoffice/phpspreadsheet": "*",
         "revolution/laravel-google-sheets": "*",
+        "sendgrid/sendgrid": "^8.1",
         "tightenco/ziggy": "^2.0"
     },
     "require-dev": {

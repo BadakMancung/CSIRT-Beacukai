@@ -14,9 +14,13 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             \App\Http\Middleware\HandleInertiaRequests::class,
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
+            \App\Http\Middleware\Level3SecurityFileAccess::class,
         ]);
 
-        //
+        // Register Level 3 Security middleware alias
+        $middleware->alias([
+            'level3.security' => \App\Http\Middleware\Level3SecurityFileAccess::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

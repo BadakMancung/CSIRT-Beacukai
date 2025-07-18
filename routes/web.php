@@ -52,19 +52,6 @@ Route::middleware('auth')->group(function () {
     
     // Additional notification routes
     Route::post('/notifications/test-email', [NotificationController::class, 'testEmail'])->name('notifications.test');
-    
-    // Secure Attachment Admin Routes
-    Route::prefix('admin/secure-attachments')->group(function () {
-        Route::get('/{fileId}/download', [ContactController::class, 'downloadSecureAttachment'])->name('admin.secure-attachment.download');
-        Route::get('/{fileId}/info', [ContactController::class, 'viewAttachmentInfo'])->name('admin.secure-attachment.info');
-        Route::get('/{fileId}/view', [ContactController::class, 'viewAttachmentInfo'])->name('admin.secure-attachment.view');
-        Route::post('/{fileId}/temp-access', [ContactController::class, 'generateTempAccess'])->name('admin.secure-attachment.temp-access');
-        Route::post('/{fileId}/expire', [ContactController::class, 'expireAttachment'])->name('admin.secure-attachment.expire');
-        Route::get('/{fileId}/logs', [ContactController::class, 'getAccessLogs'])->name('admin.secure-attachment.logs');
-    });
-    
-    // Secure Local File Download (TEMPORARY)
-    Route::get('/admin/secure-local/{filename}', [ContactController::class, 'downloadSecureLocalAttachment'])->name('admin.secure-local.download');
 });
 
 require __DIR__.'/auth.php';

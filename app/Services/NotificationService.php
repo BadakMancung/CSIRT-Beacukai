@@ -4,14 +4,28 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
+use App\Services\SendGridServiceAlternative;
 
 class NotificationService
 {
     protected $spreadsheetService;
+    protected $sendGridService;
 
     public function __construct(SpreadsheetService $spreadsheetService)
     {
         $this->spreadsheetService = $spreadsheetService;
+        
+        // Initialize SendGrid service if API key is available
+        try {
+            if (env('SENDGRID_API_KEY')) {
+                // Try alternative SendGrid service first (uses file_get_contents)
+                $this->sendGridService = new SendGridServiceAlternative();
+                Log::info('SendGrid Alternative service initialized successfully');
+            }
+        } catch (\Exception $e) {
+            Log::warning('SendGrid service initialization failed', ['error' => $e->getMessage()]);
+            $this->sendGridService = null;
+        }
     }
 
     /**
@@ -20,32 +34,46 @@ class NotificationService
     public function sendContactNotification($contact)
     {
         try {
+            // Get admin email recipients
             $recipients = $this->getNotificationRecipients('contacts');
+            $adminEmails = [];
+            
+            if (!empty($recipients)) {
+                $adminEmails = array_column($recipients, 'email');
+            } else {
+                // Fallback admin emails dari env
+                $adminEmails = [
+                    env('CSIRT_ADMIN_EMAIL', 'csirt@beacukai.go.id'),
+                    env('ADMIN_EMAIL', 'admin@csirt.beacukai.go.id')
+                ];
+            }
             
             Log::info('Sending contact notification', [
-                'recipients_count' => count($recipients),
-                'contact_id' => $contact['id'] ?? 'new'
+                'recipients_count' => count($adminEmails),
+                'contact_id' => $contact['id'] ?? 'new',
+                'service' => $this->sendGridService ? 'SendGrid' : 'SMTP'
             ]);
-            
-            if (empty($recipients)) {
-                Log::warning('No email recipients found for contact notifications');
-                return;
-            }
-            
-            foreach ($recipients as $recipient) {
-                Log::info('Sending email to recipient', ['email' => $recipient['email']]);
+
+            // Prioritas 1: SendGrid API (Recommended untuk production)
+            if ($this->sendGridService) {
+                $sendGridResult = $this->sendGridService->sendContactNotification($contact, $adminEmails);
                 
-                Mail::send('emails.contact-notification', [
-                    'contact' => $contact,
-                    'recipient' => $recipient
-                ], function ($message) use ($recipient, $contact) {
-                    $message->to($recipient['email'], $recipient['name'])
-                           ->subject('Pesan Kontak Baru - ' . ($contact['name'] ?? 'Unknown'))
-                           ->from(env('MAIL_FROM_ADDRESS'), env('MAIL_FROM_NAME'));
-                });
+                if ($sendGridResult['success']) {
+                    Log::info('Contact notification sent via SendGrid successfully', [
+                        'contact_id' => $contact['id'] ?? 'new',
+                        'response_code' => $sendGridResult['response_code'] ?? 'N/A'
+                    ]);
+                    return;
+                } else {
+                    Log::warning('SendGrid failed, falling back to SMTP', [
+                        'error' => $sendGridResult['message'] ?? 'Unknown error'
+                    ]);
+                }
             }
 
-            Log::info('Contact notification sent successfully', ['contact_id' => $contact['id'] ?? 'new']);
+            // Fallback: Laravel SMTP (jika SendGrid gagal atau tidak dikonfigurasi)
+            $this->sendViaSMTP($contact, $recipients ?: $this->createFallbackRecipients($adminEmails));
+            
         } catch (\Exception $e) {
             Log::error('Failed to send contact notification: ' . $e->getMessage(), [
                 'contact_id' => $contact['id'] ?? 'new',
@@ -53,55 +81,6 @@ class NotificationService
             ]);
         }
     }
-
-    /**
-     * Send notification when new event is created
-     */
-    public function sendEventNotification($event)
-    {
-        try {
-            $recipients = $this->getNotificationRecipients('events');
-            
-            foreach ($recipients as $recipient) {
-                Mail::send('emails.event-notification', [
-                    'event' => $event,
-                    'recipient' => $recipient
-                ], function ($message) use ($recipient, $event) {
-                    $message->to($recipient['email'], $recipient['name'])
-                           ->subject('Event Baru - ' . $event['title']);
-                });
-            }
-
-            Log::info('Event notification sent', ['event_id' => $event['id'] ?? 'new']);
-        } catch (\Exception $e) {
-            Log::error('Failed to send event notification: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * Send notification when new article is published
-     */
-    public function sendArticleNotification($article)
-    {
-        try {
-            $recipients = $this->getNotificationRecipients('articles');
-            
-            foreach ($recipients as $recipient) {
-                Mail::send('emails.article-notification', [
-                    'article' => $article,
-                    'recipient' => $recipient
-                ], function ($message) use ($recipient, $article) {
-                    $message->to($recipient['email'], $recipient['name'])
-                           ->subject('Artikel Baru - ' . $article['title']);
-                });
-            }
-
-            Log::info('Article notification sent', ['article_id' => $article['id'] ?? 'new']);
-        } catch (\Exception $e) {
-            Log::error('Failed to send article notification: ' . $e->getMessage());
-        }
-    }
-
     /**
      * Get notification recipients from spreadsheet or .env
      */
@@ -244,5 +223,60 @@ class NotificationService
             Log::error('Failed to send test email: ' . $e->getMessage(), ['email' => $email ?? 'unknown']);
             return false;
         }
+    }
+
+    /**
+     * Send notification via SMTP (fallback method)
+     */
+    private function sendViaSMTP($contact, $recipients)
+    {
+        foreach ($recipients as $recipient) {
+            Log::info('Sending SMTP email to recipient', ['email' => $recipient['email']]);
+            
+            Mail::send('emails.contact-notification', [
+                'contact' => $contact,
+                'recipient' => $recipient
+            ], function ($message) use ($recipient, $contact) {
+                $nomorAduan = $contact['id'] ?? 'new';
+                $message->to($recipient['email'], $recipient['name'])
+                       ->subject("🚨 [CSIRT] Pesan Kontak Baru - {$nomorAduan}")
+                       ->from(env('MAIL_FROM_ADDRESS'), env('MAIL_FROM_NAME'));
+            });
+        }
+        
+        Log::info('Contact notification sent via SMTP successfully', [
+            'contact_id' => $contact['id'] ?? 'new'
+        ]);
+    }
+
+    /**
+     * Create fallback recipients from email addresses
+     */
+    private function createFallbackRecipients($emailAddresses)
+    {
+        $recipients = [];
+        foreach ($emailAddresses as $email) {
+            $recipients[] = [
+                'name' => 'Admin CSIRT',
+                'email' => $email
+            ];
+        }
+        return $recipients;
+    }
+
+    /**
+     * Utility function to validate email address
+     */
+    public static function validateEmail($email)
+    {
+        return filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
+    }
+
+    /**
+     * Utility function to sanitize email address
+     */
+    public static function sanitizeEmail($email)
+    {
+        return filter_var(trim($email), FILTER_SANITIZE_EMAIL);
     }
 }

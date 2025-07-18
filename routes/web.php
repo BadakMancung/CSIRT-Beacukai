@@ -48,6 +48,16 @@ Route::middleware('auth')->group(function () {
     // Admin routes for CRUD
     Route::resource('articles', ArticleController::class);
     Route::resource('events', EventController::class);
+    
+    // API Key Rotation Management Routes
+    Route::prefix('admin/api-keys')->name('admin.api-keys.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Admin\ApiKeyRotationController::class, 'index'])->name('index');
+        Route::post('/rotate', [App\Http\Controllers\Admin\ApiKeyRotationController::class, 'rotate'])->name('rotate');
+        Route::post('/emergency-rotate', [App\Http\Controllers\Admin\ApiKeyRotationController::class, 'emergencyRotate'])->name('emergency-rotate');
+        Route::post('/schedule', [App\Http\Controllers\Admin\ApiKeyRotationController::class, 'schedule'])->name('schedule');
+        Route::post('/validate', [App\Http\Controllers\Admin\ApiKeyRotationController::class, 'validate'])->name('validate');
+        Route::get('/history/{service?}', [App\Http\Controllers\Admin\ApiKeyRotationController::class, 'history'])->name('history');
+    });
     Route::resource('notifications', NotificationController::class)->except(['show']);
     
     // Additional notification routes
